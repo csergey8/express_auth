@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const SALT_I = 10;
 
 
@@ -16,6 +17,9 @@ const userSchema = mongoose.Schema({
     type: String,
     require: true,
     minlenght: 6
+  },
+  token : {
+    type: String
   }
 });
 
@@ -49,6 +53,28 @@ userSchema.methods.comparePasswords = function(canidatePassword, cb) {
     } else {
       cb(null, isMatch)
     }
+  });
+}
+
+userSchema.methods.generateToken = function(cb) {
+  var user = this;
+  var token = jwt.sign(user._id.toHexString(), 'supersecret');
+
+  user.token = token;
+  user.save(function(err, user){
+    if(err) return cb(err)
+    cb(null, user);
+  });
+}
+
+userSchema.statics.findByToken = function(token, cb) {
+  const user = this;
+
+  jwt.verify(token, 'supersecret', function(err, decode) {
+    user.findOne({"_id": decode, "token": token}, function(err, user) {
+      if(err) return cb(err);
+      cb(null, user);
+    })
   });
 }
 

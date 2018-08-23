@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
@@ -16,7 +17,8 @@ const app = express();
 //Everything is posted will convert to json
 app.use(bodyParser.json());
 
-
+//To read cookies
+app.use(cookieParser());
 
 //
 app.post('/api/user', (req, res)  => {
@@ -45,12 +47,29 @@ app.post('/api/user/login', (req, res) => {
     } else {
       user.comparePasswords(req.body.password, (err, isMatch) => {
         if(err) throw err;
-        if(!isMatch) return res.status(400).json({ message: "Wrong password"})
+        if(!isMatch) return res.status(400).json({ message: "Wrong password"});
 
-        res.status(200).send(isMatch);
+        user.generateToken((err, user) => {
+          if(err) return res.status(400).send(err);
+
+          res.cookie('auth', user.token).status(200);
+          res.send('ok');
+        });
       });
     }
   })
+})
+
+app.get('/user/profile', (req, res) => {
+  let token = req.cookies.auth;
+
+  User.findByToken(token, (err, user) => {
+    if(err) throw err;
+    if(!user) res.status(401).send('no access');
+
+    res.status(200).send('you have access'); 
+  })
+  
 })
 
 
